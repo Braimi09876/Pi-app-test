@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pi App</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://sdk.minepi.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://socialchain.app https://backend.appstudio-u7cm9zhmha0ruwv8.piappengine.com; frame-ancestors 'self' https://*.pinet.com https://*.minepi.com;" />
+<script src="https://sdk.minepi.com/pi-sdk.js"></script>
+<style>
+  body { font-family: sans-serif; text-align: center; padding: 40px; background: #f5f0ff; }
+  button { background: #7b2ff7; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 12px; cursor: pointer; }
+  #status { margin-top: 20px; font-size: 16px; }
+</style>
+</head>
+<body>
+  <h1>Welcome to Pi App</h1>
+  <p>Sign in with Pi to continue</p>
+  <button id="loginBtn">Login with Pi</button>
+  <div id="status">Not logged in</div>
+<script>
+  let sessionToken = null;
+  let piUser = null;
+  async function onIncompletePaymentFound(payment) { console.log(payment); }
+  async function login() {
+    const status = document.getElementById("status");
+    try {
+      status.textContent = "Initializing Pi SDK...";
+      await Pi.init({ version: "2.0" });
+      status.textContent = "Authenticating with Pi...";
+      const auth = await Pi.authenticate(["username"], onIncompletePaymentFound);
+      const accessToken = auth.accessToken;
+      status.textContent = "Verifying with App Studio...";
+      const res = await fetch("https://backend.appstudio-u7cm9zhmha0ruwv8.piappengine.com/pi/auth/v1/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken: accessToken })
+      });
+      if (!res.ok) throw new Error("Login failed: " + res.status);
+      const data = await res.json();
+      sessionToken = data.sessionToken;
+      piUser = data.user;
+      status.textContent = "Welcome @" + piUser.username + " - Verified!";
+      document.getElementById("loginBtn").textContent = "Logged in as @" + piUser.username;
+    } catch (e) {
+      status.textContent = "Login failed: " + e.message;
+    }
+  }
+  document.getElementById("loginBtn").addEventListener("click", login);
+</script>
+</body>
+</html>
